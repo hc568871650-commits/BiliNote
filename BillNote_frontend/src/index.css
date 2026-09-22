@@ -7,6 +7,20 @@ html, body, #root {
   overflow: hidden;
 }
 
+body {
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable='true'],
+pre,
+code,
+.select-text,
+.select-text * {
+  user-select: text;
+}
+
 /* 修改滚动条轨道颜色 */
 ::-webkit-scrollbar {
   width: 8px; /* 控制滚动条的宽度 */
@@ -14,18 +28,18 @@ html, body, #root {
 
 /* 修改滚动条的轨道颜色 */
 ::-webkit-scrollbar-track {
-  background-color: #f1f1f1; /* 轨道的背景颜色 */
+  background-color: var(--muted); /* 轨道的背景颜色 */
 }
 
 /* 修改滚动条的滑块颜色 */
 ::-webkit-scrollbar-thumb {
-  background-color: #888; /* 滑块的颜色 */
+  background-color: var(--muted-foreground); /* 滑块的颜色 */
   border-radius: 4px; /* 圆角 */
 }
 
 /* 当鼠标悬停时，修改滑块颜色 */
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #555; /* 悬停时的颜色 */
+  background-color: var(--foreground); /* 悬停时的颜色 */
 }
 
 :root {
@@ -46,7 +60,7 @@ html, body, #root {
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: var(    --color-neutral-200);
+  --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: #096dd9;
   --chart-1: oklch(0.646 0.222 41.116);
@@ -72,7 +86,7 @@ html, body, #root {
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
   --primary: #3c77fb;
-  --primary-light: #e0eeff;
+  --primary-light: oklch(0.3 0.08 260);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -81,7 +95,7 @@ html, body, #root {
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #e6f7ff;
+  --border: oklch(0.32 0 0);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
@@ -145,4 +159,45 @@ html, body, #root {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* github-markdown-css only ships a light stylesheet; scope dark overrides to note content. */
+.dark .markdown-body {
+  color: var(--foreground);
+  background-color: transparent;
+}
+
+.dark .markdown-body :is(h1, h2, h3, h4, h5, h6, p, li, strong, td, th, blockquote) {
+  color: inherit;
+}
+
+.dark .markdown-body :is(h2, th, td) {
+  border-color: var(--border);
+}
+
+.dark .markdown-body :is(table tr, table tr:nth-child(2n)) {
+  background-color: transparent;
+  border-color: var(--border);
+}
+
+.dark .markdown-body :is(code, pre) {
+  color: var(--foreground);
+  background-color: var(--muted);
+}
+
+.dark .markdown-body a:not(.origin-link a) {
+  color: #7da7ff;
+}
+
+.dark .markdown-body .origin-link a {
+  background-color: color-mix(in srgb, var(--primary) 20%, transparent);
+  color: #9dbaff;
+}
+
+.dark .ant-bubble-content,
+.dark .ant-sender,
+.dark .ant-sender textarea {
+  color: var(--foreground);
+  background-color: var(--card);
+  border-color: var(--border);
 }

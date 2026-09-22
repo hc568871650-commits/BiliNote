@@ -10,10 +10,21 @@ export const HomePage: FC = () => {
   const currentTaskId = useTaskStore(state => state.currentTaskId)
 
   const currentTask = tasks.find(t => t.id === currentTaskId)
+  const syncNotes = useTaskStore(state => state.syncNotes)
+  const loadTask = useTaskStore(state => state.loadTask)
+
+  useEffect(() => {
+    const unsubscribe = useTaskStore.persist.onFinishHydration(() => { void syncNotes() })
+    if (useTaskStore.persist.hasHydrated()) void syncNotes()
+    return unsubscribe
+  }, [syncNotes])
+
+  useEffect(() => {
+    if (currentTaskId) void loadTask(currentTaskId)
+  }, [currentTaskId, loadTask])
 
   const [status, setStatus] = useState<ViewStatus>('idle')
 
-  const content = currentTask?.markdown || ''
 
   useEffect(() => {
     if (!currentTask) {
@@ -21,7 +32,7 @@ export const HomePage: FC = () => {
     } else if (currentTask.status === 'SUCCESS') {
       setStatus('success')
     } else if (currentTask.status === 'FAILED') {
-      setStatus('failed')
+      setStatus(currentTask.markdown?.length ? 'success' : 'failed')
     } else {
       // PENDING、PARSING、DOWNLOADING、TRANSCRIBING、SUMMARIZING 等所有进行中状态
       setStatus('loading')

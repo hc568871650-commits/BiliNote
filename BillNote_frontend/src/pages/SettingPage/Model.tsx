@@ -3,11 +3,11 @@ import { Outlet } from 'react-router-dom'
 
 const Model = () => {
   return (
-    <div className={'flex h-full min-h-0 bg-white'}>
-      <div className={'flex-1/5 min-h-0 overflow-y-auto border-r border-neutral-200 p-2'}>
+    <div className="flex min-h-full min-w-0 flex-col bg-background lg:h-full lg:min-h-0 lg:flex-row">
+      <div className="min-w-0 shrink-0 border-b border-border p-3 lg:w-60 lg:overflow-y-auto lg:border-r lg:border-b-0">
         <Provider></Provider>
       </div>
-      <div className={'flex-4/5 min-h-0 overflow-y-auto'}>
+      <div className="min-w-0 flex-1 lg:overflow-y-auto">
         <Outlet />
       </div>
     </div>

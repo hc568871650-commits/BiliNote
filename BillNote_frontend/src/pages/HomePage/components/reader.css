@@ -1,0 +1,8 @@
+.reader-body .markdown-body { font-size: inherit; line-height: 1.85; }
+.reader-body .markdown-body p { line-height: inherit; }
+.reader-body .markdown-body h1 { font-size: 2em; }
+.reader-body .markdown-body h2 { font-size: 1.5em; }
+.reader-body .markdown-body h3 { font-size: 1.25em; }
+.reader-body .markdown-body h4 { font-size: 1.1em; }
+.reader-body .markdown-body :is(h1,h2,h3,h4,h5,h6) { scroll-margin-top: 16px; }
+.reader-body .markdown-body img { max-width: 100%; }

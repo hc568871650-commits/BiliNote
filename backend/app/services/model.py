@@ -161,7 +161,20 @@ class ModelService:
                     code=ProviderErrorEnum.WRONG_PARAMETER.code,
                     message="请先为该供应商添加至少一个模型再测试连通性",
                 )
-            model = saved_models[0]["model_name"]
+            chat_models = [entry["model_name"] for entry in saved_models
+                           if not entry["model_name"].lower().startswith("whisper-")]
+            if not chat_models:
+                raise ProviderError(
+                    code=ProviderErrorEnum.WRONG_PARAMETER.code,
+                    message="该供应商只保存了语音转写模型，请添加聊天模型后再测试聊天连接",
+                )
+            model = chat_models[0]
+
+        if model.lower().startswith("whisper-"):
+            raise ProviderError(
+                code=ProviderErrorEnum.WRONG_PARAMETER.code,
+                message="Whisper 是语音转写模型，不能用于聊天连接测试；请在转写配置中验证",
+            )
 
         ok = OpenAICompatibleProvider.test_connection(
             api_key=provider.get('api_key'),

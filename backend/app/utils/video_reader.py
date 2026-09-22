@@ -5,6 +5,7 @@ import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import ffmpeg
+from ffmpeg_helper import find_ffmpeg_binary
 from PIL import Image, ImageDraw, ImageFont
 
 from app.utils.logger import get_logger
@@ -59,23 +60,28 @@ class VideoReader:
         """提取单帧，返回输出路径或 None（失败时）。"""
         time_label = self.format_time(ts)
         output_path = os.path.join(self.frame_dir, f"frame_{time_label}.jpg")
-        cmd = ["ffmpeg", "-ss", str(ts), "-i", self.video_path, "-frames:v", "1", "-q:v", "2", "-y", output_path,
+        cmd = [find_ffmpeg_binary("ffmpeg"), "-ss", str(ts), "-i", self.video_path, "-frames:v", "1", "-q:v", "2", "-y", output_path,
                "-hide_banner", "-loglevel", "error"]
         try:
-            subprocess.run(cmd, check=True)
+            completed = subprocess.run(cmd, capture_output=True, check=False)
+            if completed.returncode:
+                logger.warning("抽帧失败 (timestamp=%s, code=%s): %s", ts, completed.returncode,
+                               completed.stderr.decode("utf-8", errors="replace")[-1000:])
+                return None
             return output_path
-        except subprocess.CalledProcessError:
-            return None
+        except OSError:
+            logger.exception("无法启动抽帧进程 (timestamp=%s)", ts)
+            raise
 
     def extract_frames(self, max_frames=1000) -> list[str]:
 
         try:
             os.makedirs(self.frame_dir, exist_ok=True)
-            duration = float(ffmpeg.probe(self.video_path)["format"]["duration"])
+            duration = float(ffmpeg.probe(self.video_path, cmd=find_ffmpeg_binary("ffprobe"))["format"]["duration"])
             timestamps = [i for i in range(0, int(duration), self.frame_interval)][:max_frames]
 
             # 并行提取帧
-            max_workers = min(os.cpu_count() or 4, 8, len(timestamps))
+            max_workers = min(os.cpu_count() or 4, 2, len(timestamps))
             frame_results: dict[int, str | None] = {}
             with ThreadPoolExecutor(max_workers=max_workers) as pool:
                 futures = {pool.submit(self._extract_single_frame, ts): ts for ts in timestamps}
@@ -101,8 +107,8 @@ class VideoReader:
                 image_paths.append(output_path)
             return image_paths
         except Exception as e:
-            logger.error(f"分割帧发生错误：{str(e)}")
-            raise ValueError("视频处理失败")
+            logger.exception("分割帧发生错误")
+            raise ValueError("视频处理失败") from e
 
     def group_images(self) -> list[list[str]]:
         image_files = [os.path.join(self.frame_dir, f) for f in os.listdir(self.frame_dir) if
@@ -151,16 +157,9 @@ class VideoReader:
             print(self.frame_dir,self.grid_dir)
             os.makedirs(self.frame_dir, exist_ok=True)
             os.makedirs(self.grid_dir, exist_ok=True)
-            #清空帧文件夹
-            for file in os.listdir(self.frame_dir):
-                if file.startswith("frame_"):
-                    os.remove(os.path.join(self.frame_dir, file))
-            print(self.frame_dir,self.grid_dir)
-            #清空网格文件夹
-            for file in os.listdir(self.grid_dir):
-                if file.startswith("grid_"):
-                    os.remove(os.path.join(self.grid_dir, file))
-            print(self.frame_dir,self.grid_dir)
+            if any(name.startswith("frame_") for name in os.listdir(self.frame_dir)) or \
+               any(name.startswith("grid_") for name in os.listdir(self.grid_dir)):
+                raise ValueError("Run image directory must be empty")
             self.extract_frames()
             print("2#3",self.frame_dir,self.grid_dir)
             logger.info("开始拼接网格图...")
@@ -168,8 +167,7 @@ class VideoReader:
             groups = self.group_images()
             for idx, group in enumerate(groups, start=1):
                 if len(group) < self.grid_size[0] * self.grid_size[1]:
-                    logger.warning(f"⚠️ 跳过第 {idx} 组，图片不足 {self.grid_size[0] * self.grid_size[1]} 张")
-                    continue
+                    logger.info("第 %s 组仅有 %s 张，保留现有画面并以空白填充", idx, len(group))
                 out_path = self.concat_images(group, f"grid_{idx}")
                 image_paths.append(out_path)
 

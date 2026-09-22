@@ -9,6 +9,7 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use serde::Serialize;
+mod desktop;
 
 // Sidecar 启动期内前端不该看到「加载中」无限转。
 // 总等待上限 = 启动期 PyInstaller 解压 + uvicorn bind 时间的最坏估计，
@@ -21,9 +22,25 @@ struct SidecarHandle(Mutex<Option<CommandChild>>);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    // The separately built preview must be isolated even when app.exe is opened directly.
+    if context.config().identifier.ends_with(".preview") {
+        let exe = env::current_exe().expect("无法获取预览版路径");
+        let root = exe.parent().expect("无法获取预览版目录");
+        env::set_var("BACKEND_HOST", "127.0.0.1");
+        env::set_var("BACKEND_PORT", "18483");
+        env::set_var("NOTE_OUTPUT_DIR", root.join("note_results"));
+        for (key, directory) in [("APPDATA", "AppData"), ("LOCALAPPDATA", "LocalAppData"),
+            ("TEMP", "Temp"), ("TMP", "Temp"), ("WEBVIEW2_USER_DATA_FOLDER", "WebView2"), ("HF_HOME", "Cache/huggingface")] {
+            let path = root.join(directory);
+            std::fs::create_dir_all(&path).expect("无法创建预览版数据目录");
+            env::set_var(key, path);
+        }
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
+            desktop::setup_tray(app)?;
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -71,9 +88,22 @@ pub fn run() {
             run_command_with_env,
             test_ffmpeg_access,
             get_install_path_diagnostics,
-            restart_backend_sidecar
+            restart_backend_sidecar,
+            desktop::open_note_folder,
+            desktop::hide_to_tray
         ])
-        .build(tauri::generate_context!())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Only hide when the tray is available, so there is always a way back.
+                if window.app_handle().tray_by_id("bilinote").is_some() {
+                    api.prevent_close();
+                    if let Err(error) = window.hide() {
+                        eprintln!("Cannot hide BiliNote: {error}");
+                    }
+                }
+            }
+        })
+        .build(context)
         .expect("error while building tauri application")
         // 用 build()+run() 拿到 RunEvent 流，关键诉求：app 退出前必须 kill 掉 PyInstaller
         // sidecar，否则它会变成持有 8483 端口的孤儿进程，下次启动 BiliNote 直接 bind 失败。

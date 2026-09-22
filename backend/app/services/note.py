@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import uuid
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Optional, Tuple, Union, Any
@@ -36,6 +37,7 @@ from app.utils.screenshot_marker import extract_screenshot_timestamps
 from app.utils.status_code import StatusCode
 from app.utils.video_helper import generate_screenshot
 from app.utils.video_reader import VideoReader
+from app.services import note_storage
 
 # ------------------ 环境变量与全局配置 ------------------
 
@@ -59,6 +61,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def _cache_task_id(path: Path, kind: str) -> str:
+    if path.parent.name == "_meta" and "__" in path.parent.parent.name:
+        return path.parent.parent.name.rsplit("__", 1)[-1]
+    return path.stem.removesuffix(f"_{kind}")
+
+
 class NoteGenerator:
     """
     NoteGenerator 用于执行视频/音频下载、转写、GPT 生成笔记、插入截图/链接、
@@ -74,6 +82,7 @@ class NoteGenerator:
         self.transcriber: Transcriber = self._init_transcriber()
         self.video_path: Optional[Path] = None
         self.video_img_urls=[]
+        self.run_dir: Optional[Path] = None
         logger.info("NoteGenerator 初始化完成")
 
 
@@ -130,9 +139,11 @@ class NoteGenerator:
             gpt = self._get_gpt(model_name, provider_id)
 
             # 缓存文件路径
-            audio_cache_file = NOTE_OUTPUT_DIR / f"{task_id}_audio.json"
-            transcript_cache_file = NOTE_OUTPUT_DIR / f"{task_id}_transcript.json"
-            markdown_cache_file = NOTE_OUTPUT_DIR / f"{task_id}_markdown.md"
+            audio_cache_file = note_storage.cache_path(task_id, "audio")
+            transcript_cache_file = note_storage.cache_path(task_id, "transcript")
+            markdown_cache_file = note_storage.cache_path(task_id, "markdown")
+            for cache_file in (audio_cache_file, transcript_cache_file, markdown_cache_file):
+                cache_file.parent.mkdir(parents=True, exist_ok=True)
             # 1. 获取字幕/转写：优先缓存 → 平台字幕 → 音频转写
             transcript = None
 
@@ -229,9 +240,7 @@ class NoteGenerator:
             self._update_status(task_id, TaskStatus.SAVING)
             self._save_metadata(video_id=audio_meta.video_id, platform=platform, task_id=task_id)
 
-            # 6. 完成
-            self._update_status(task_id, TaskStatus.SUCCESS)
-            logger.info(f"笔记生成成功 (task_id={task_id})")
+            # The router publishes SUCCESS only after the complete note is durable.
             return NoteResult(markdown=markdown, transcript=transcript, audio_meta=audio_meta)
 
         except Exception as exc:
@@ -323,7 +332,8 @@ class NoteGenerator:
             return
 
         NOTE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        status_file = NOTE_OUTPUT_DIR / f"{task_id}.status.json"
+        status_file = note_storage.status_path(task_id)
+        status_file.parent.mkdir(parents=True, exist_ok=True)
         print(f"写入状态文件: {status_file} 当前状态: {status}")
         data = {"status": status.value if isinstance(status, TaskStatus) else status}
         if message:
@@ -343,12 +353,7 @@ class NoteGenerator:
             print(f"状态文件写入成功: {status_file}")
         except Exception as e:
             logger.error(f"写入状态文件失败 (task_id={task_id})：{e}")
-            # Try to write error to file directly as fallback
-            try:
-                with status_file.open('w', encoding='utf-8') as f:
-                    f.write(f"Error writing status: {str(e)}")
-            except:
-                logger.error(f"写入错误  {e}")
+            raise
 
     def _handle_exception(self, task_id, exc):
         logger.error(f"任务异常 (task_id={task_id})", exc_info=True)
@@ -393,7 +398,7 @@ class NoteGenerator:
         :param grid_size: 缩略图网格尺寸
         :return: AudioDownloadResult 对象
         """
-        task_id = audio_cache_file.stem.split("_")[0]
+        task_id = _cache_task_id(audio_cache_file, "audio")
         self._update_status(task_id, status_phase)
 
         # 已有缓存，尝试加载
@@ -439,6 +444,7 @@ class NoteGenerator:
                 logger.info(f"视频下载完成：{self.video_path}")
 
                 if grid_size:
+                    run_dir = self.run_dir or Path("Temp") / "note_jobs" / task_id / uuid.uuid4().hex
                     self.video_img_urls = VideoReader(
                         video_path=str(self.video_path),
                         grid_size=tuple(grid_size),
@@ -446,6 +452,8 @@ class NoteGenerator:
                         unit_width=960,
                         unit_height=540,
                         save_quality=80,
+                        frame_dir=str(run_dir / "frames"),
+                        grid_dir=str(run_dir / "grids"),
                     ).run()
                 else:
                     logger.info("未指定 grid_size，跳过缩略图生成")
@@ -543,7 +551,7 @@ class NoteGenerator:
         :param status_phase: 对应的状态枚举，如 TaskStatus.TRANSCRIBING
         :return: TranscriptResult 对象
         """
-        task_id = transcript_cache_file.stem.split("_")[0]
+        task_id = _cache_task_id(transcript_cache_file, "transcript")
         self._update_status(task_id, status_phase)
 
         # 已有缓存，尝试加载
@@ -595,7 +603,7 @@ class NoteGenerator:
         :param extras: GPT 额外参数
         :return: 生成的 Markdown 字符串
         """
-        task_id = markdown_cache_file.stem
+        task_id = _cache_task_id(markdown_cache_file, "markdown")
         self._update_status(task_id, TaskStatus.SUMMARIZING)
 
         source = GPTSource(
@@ -640,10 +648,7 @@ class NoteGenerator:
         :return: 处理后的 Markdown 字符串
         """
         if "screenshot" in formats and video_path:
-            try:
-                markdown = self._insert_screenshots(markdown, video_path)
-            except Exception as exc:
-                logger.warning("截图插入失败，跳过该步骤")
+            markdown = self._insert_screenshots(markdown, video_path)
 
         if "link" in formats:
             try:
@@ -664,15 +669,15 @@ class NoteGenerator:
         matches: List[Tuple[str, int]] = extract_screenshot_timestamps(markdown)
         for idx, (marker, ts) in enumerate(matches):
             try:
-                img_path = generate_screenshot(str(video_path), str(IMAGE_OUTPUT_DIR), ts, idx)
+                if not self.run_dir:
+                    raise RuntimeError("Missing isolated screenshot directory")
+                img_path = generate_screenshot(str(video_path), str(self.run_dir / "images"), ts, idx)
                 filename = Path(img_path).name
-                # 构建前端可访问的 URL，例如 /static/screenshots/{filename}
-                img_url = f"{IMAGE_BASE_URL.rstrip('/')}/{filename}"
+                img_url = f"images/{filename}"
                 markdown = markdown.replace(marker, f"![]({img_url})", 1)
             except Exception as exc:
                 logger.error(f"生成截图失败 (timestamp={ts})：{exc}")
-                # self._handle_exception(task_id, exc)
-                return None
+                raise
         return markdown
 
     @staticmethod

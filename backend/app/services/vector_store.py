@@ -117,7 +117,8 @@ class VectorStoreManager:
 
     def index_task(self, task_id: str) -> None:
         """读取笔记结果并建立向量索引。"""
-        result_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
+        from app.services.note_storage import result_path as note_result_path
+        result_path = note_result_path(task_id)
         if not os.path.exists(result_path):
             logger.warning(f"笔记文件不存在，跳过索引: {result_path}")
             return
@@ -209,8 +210,15 @@ class VectorStoreManager:
         try:
             self._client.delete_collection(col_name)
             logger.info(f"已删除向量索引: {task_id}")
-        except Exception:
-            pass
+        except Exception as exc:
+            # A missing collection is idempotent; a storage failure must remain visible.
+            try:
+                self._client.get_collection(col_name)
+            except Exception as lookup_exc:
+                if "does not exist" in str(lookup_exc).lower() or "not found" in str(lookup_exc).lower():
+                    return
+                raise lookup_exc from exc
+            raise
 
     def is_indexed(self, task_id: str) -> bool:
         """检查指定任务是否已建立完整索引（含 meta 信息）。"""

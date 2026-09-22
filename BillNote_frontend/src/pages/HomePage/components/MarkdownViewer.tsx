@@ -17,7 +17,6 @@ import rehypeKatex from 'rehype-katex'
 import rehypeSlug from 'rehype-slug'
 import 'katex/dist/katex.min.css'
 import 'github-markdown-css/github-markdown-light.css'
-import { ScrollArea } from '@/components/ui/scroll-area.tsx'
 import { useTaskStore } from '@/store/taskStore'
 import { noteStyles } from '@/constant/note.ts'
 import { MarkdownHeader } from '@/pages/HomePage/components/MarkdownHeader.tsx'
@@ -25,6 +24,7 @@ import TranscriptViewer from '@/pages/HomePage/components/transcriptViewer.tsx'
 import MarkmapEditor from '@/pages/HomePage/components/MarkmapComponent.tsx'
 import ChatPanel from '@/pages/HomePage/components/ChatPanel.tsx'
 import VideoBanner from '@/pages/HomePage/components/VideoBanner.tsx'
+import ReaderPane from '@/pages/HomePage/components/ReaderPane'
 
 interface VersionNote {
   ver_id: string
@@ -35,7 +35,6 @@ interface VersionNote {
 }
 
 interface MarkdownViewerProps {
-  content: string | VersionNote[]
   status: 'idle' | 'loading' | 'success' | 'failed'
 }
 
@@ -54,7 +53,7 @@ const rehypePlugins = [rehypeKatex, rehypeSlug]
  * 构建 ReactMarkdown components 对象，baseURL 用于修正图片路径。
  * 使用函数 + useMemo 避免每次渲染都创建新的函数实例。
  */
-function createMarkdownComponents(baseURL: string) {
+function createMarkdownComponents(baseURL: string, resourceBase?: string) {
   return {
     h1: ({ children, ...props }: any) => (
       <h1
@@ -179,8 +178,12 @@ function createMarkdownComponents(baseURL: string) {
       )
     },
     img: ({ node, ...props }: any) => {
-      let src = props.src
-      if (src.startsWith('/')) {
+      let src = String(props.src || '')
+      if (resourceBase && !/^(?:[a-z][a-z\d+.-]*:|\/\/|\/)/i.test(src)) {
+        src = new URL(src, new URL(baseURL + resourceBase, window.location.origin)).toString()
+      } else if (src.startsWith('/api/') && baseURL) {
+        src = baseURL + src
+      } else if (src.startsWith('/') && !src.startsWith('/api/')) {
         src = baseURL + src
       }
       props.src = src
@@ -327,13 +330,15 @@ const MarkdownViewer: FC<MarkdownViewerProps> = memo(({ status }) => {
   const taskStatus = currentTask?.status || 'PENDING'
   const retryTask = useTaskStore.getState().retryTask
   const isMultiVersion = Array.isArray(currentTask?.markdown)
+  const selectedVersion = currentTask && Array.isArray(currentTask.markdown) ? currentTask.markdown.find(v => v.ver_id === currentVerId) : null
+  const resourceBase = selectedVersion?.resource_base || currentTask?.resource_base
   const [showTranscribe, setShowTranscribe] = useState(false)
   const [showChat, setShowChat] = useState<false | 'half' | 'full'>(false)
   const [viewMode, setViewMode] = useState<'map' | 'preview'>('preview')
   const svgRef = useRef<SVGSVGElement>(null)
 
   // 缓存 ReactMarkdown components，仅在 baseURL 变化时重建
-  const markdownComponents = useMemo(() => createMarkdownComponents(baseURL), [baseURL])
+  const markdownComponents = useMemo(() => createMarkdownComponents(baseURL, resourceBase), [baseURL, resourceBase])
 
   // 多版本内容处理
   useEffect(() => {
@@ -346,15 +351,13 @@ const MarkdownViewer: FC<MarkdownViewerProps> = memo(({ status }) => {
       setCreateTime(currentTask.createdAt)
       setSelectedContent(currentTask?.markdown)
     } else {
-      const latestVersion = [...currentTask.markdown].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )[0]
+      const latestVersion = currentTask.markdown[0]
 
       if (latestVersion) {
         setCurrentVerId(latestVersion.ver_id)
       }
     }
-  }, [currentTask?.id, taskStatus])
+  }, [currentTask?.id, currentTask?.markdown, taskStatus])
   useEffect(() => {
     if (!currentTask || !isMultiVersion) return
 
@@ -365,7 +368,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = memo(({ status }) => {
       setCreateTime(currentVer.created_at || '')
       setSelectedContent(currentVer.content)
     }
-  }, [currentVerId, currentTask?.id])
+  }, [currentVerId, currentTask?.id, currentTask?.markdown])
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(selectedContent)
@@ -448,8 +451,8 @@ const MarkdownViewer: FC<MarkdownViewerProps> = memo(({ status }) => {
           <p className="text-lg font-bold text-red-500">笔记生成失败</p>
           <p className="mt-2 mb-2 text-xs text-red-400">请检查后台或稍后再试</p>
 
-          <Button onClick={() => retryTask(currentTask.id)} size="lg">
-            重试
+          <Button onClick={() => retryTask(currentTask.id)} size="lg" disabled={Boolean(currentTask.archived_at)}>
+            {currentTask.archived_at ? '请先恢复笔记' : '重试'}
           </Button>
         </div>
       </div>
@@ -478,7 +481,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = memo(({ status }) => {
       />
 
       {viewMode === 'map' ? (
-        <div className="flex w-full flex-1 overflow-hidden bg-white">
+        <div className="flex w-full flex-1 overflow-hidden bg-background">
           <div className={'w-full'}>
             <MarkmapEditor
               value={selectedContent}
@@ -489,7 +492,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = memo(({ status }) => {
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 overflow-hidden bg-white py-2">
+        <div className="flex flex-1 overflow-hidden bg-background py-2">
           {selectedContent && selectedContent !== 'loading' && selectedContent !== 'empty' ? (
             <>
               {showChat === 'full' && currentTask ? (
@@ -498,14 +501,14 @@ const MarkdownViewer: FC<MarkdownViewerProps> = memo(({ status }) => {
                 </div>
               ) : (
               <>
-              <ScrollArea className="min-w-0 flex-1">
+              <ReaderPane key={`${currentTask?.id}:${currentVerId}`} taskId={currentTask?.id || ''} versionId={currentVerId} content={selectedContent} title={currentTask?.audioMeta?.title || '笔记'}>
                 <div className="px-2">
                   <VideoBanner
                     audioMeta={currentTask?.audioMeta}
                     videoUrl={currentTask?.formData?.video_url}
                   />
                 </div>
-                <div className={'markdown-body w-full px-2'}>
+                <div className={'markdown-body select-text w-full px-2'}>
                   <ReactMarkdown
                     remarkPlugins={remarkPlugins}
                     rehypePlugins={rehypePlugins}
@@ -514,7 +517,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = memo(({ status }) => {
                     {selectedContent.replace(/^>\s*来源链接：[^\n]*\n*/m, '')}
                   </ReactMarkdown>
                 </div>
-              </ScrollArea>
+              </ReaderPane>
               {showTranscribe && (
                 <div className={'ml-2 w-2/4'}>
                   <TranscriptViewer />

@@ -1,5 +1,13 @@
 import request from '@/utils/request'
 import toast from 'react-hot-toast'
+import type { Task } from '@/store/taskStore'
+
+export const listNotes = () => request.get('/notes') as unknown as Promise<Task[]>
+export const getNote = (id: string) => request.get(`/notes/${encodeURIComponent(id)}`) as unknown as Promise<Task>
+export const importNotes = (tasks: Task[]) => request.post('/notes/import', { tasks }) as unknown as Promise<Task[]>
+export const archiveNote = (id: string) => request.post(`/notes/${encodeURIComponent(id)}/archive`) as unknown as Promise<Task>
+export const restoreNote = (id: string) => request.post(`/notes/${encodeURIComponent(id)}/restore`) as unknown as Promise<Task>
+export const deleteNote = (id: string) => request.delete(`/notes/${encodeURIComponent(id)}`)
 
 export const generateNote = async (data: {
   video_url: string

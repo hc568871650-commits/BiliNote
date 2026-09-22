@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import subprocess
 import os
 import uuid
+from ffmpeg_helper import find_ffmpeg_binary
 load_dotenv()
 api_path = os.getenv("API_BASE_URL", "http://localhost")
 BACKEND_PORT= os.getenv("BACKEND_PORT", 8483)
@@ -23,7 +24,7 @@ def generate_screenshot(video_path: str, output_dir: str, timestamp: int, index:
     output_path = output_dir / filename
 
     command = [
-        "ffmpeg",
+        find_ffmpeg_binary("ffmpeg"),
         "-ss", str(timestamp),
         "-i", str(video_path),
         "-frames:v", "1",
@@ -35,8 +36,8 @@ def generate_screenshot(video_path: str, output_dir: str, timestamp: int, index:
     print("Running command:", command)
     result = subprocess.run(command, capture_output=True, text=True)
 
-    if result.returncode != 0:
-        print("ffmpeg failed:", result.stderr)
+    if result.returncode != 0 or not output_path.is_file() or output_path.stat().st_size == 0:
+        raise RuntimeError(f"Screenshot failed at {timestamp}s: {result.stderr[-1000:]}")
 
     return str(output_path)
 

@@ -327,3 +327,6 @@ cython_debug/
 # FFmpeg 构建文件（不应该提交到仓库）
 ffmpeg*/
 ffmpg*/
+
+# Local runtime configuration (may contain cookies and API credentials)
+/config/

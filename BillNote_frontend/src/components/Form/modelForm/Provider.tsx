@@ -11,20 +11,20 @@ const Provider = () => {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className={'search flex gap-1 py-1.5'}>
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="search flex gap-1 py-1.5">
         <Button
           type={'button'}
           onClick={() => {
             handleClick()
           }}
-          className="w-full"
+          className="w-full lg:whitespace-normal"
         >
           添加模型供应商
         </Button>
       </div>
       <div className="text-sm font-light">模型供应商列表</div>
-      <div>
+      <div className="flex gap-2 overflow-x-auto pb-1 lg:block lg:overflow-visible">
         {providers &&
           providers.map((provider, index) => {
             return (

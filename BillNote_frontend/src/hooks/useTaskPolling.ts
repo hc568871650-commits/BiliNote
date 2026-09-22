@@ -6,8 +6,7 @@ import toast from 'react-hot-toast'
 export const useTaskPolling = (interval = 3000) => {
   const tasks = useTaskStore(state => state.tasks)
   const updateTaskContent = useTaskStore(state => state.updateTaskContent)
-  const updateTaskStatus = useTaskStore(state => state.updateTaskStatus)
-  const removeTask = useTaskStore(state => state.removeTask)
+  const loadTask = useTaskStore(state => state.loadTask)
 
   const tasksRef = useRef(tasks)
 
@@ -32,14 +31,16 @@ export const useTaskPolling = (interval = 3000) => {
 
           if (status && status !== task.status) {
             if (status === 'SUCCESS') {
-              const { markdown, transcript, audio_meta } = res.result
+              const { markdown, transcript, audio_meta, resource_base } = res.result
               toast.success('笔记生成成功')
               updateTaskContent(task.id, {
                 status,
                 markdown,
                 transcript,
                 audioMeta: audio_meta,
+                resource_base,
               })
+              await loadTask(task.id)
             } else if (status === 'FAILED') {
               updateTaskContent(task.id, { status })
               console.warn(`⚠️ 任务 ${task.id} 失败`)

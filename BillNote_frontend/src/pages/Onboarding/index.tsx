@@ -221,7 +221,7 @@ const Onboarding = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-pink-50 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-pink-50 p-6 text-gray-900">
       <div className="w-full max-w-xl rounded-xl border bg-white p-6 shadow-lg">
         <div className="flex items-center gap-3 mb-4">
           <img src={logo} alt="logo" className="h-10 w-10" />
@@ -243,6 +243,10 @@ const Onboarding = () => {
           ))}
         </div>
 
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          <span>阅读和整理已有笔记无需配置模型，生成新笔记时再配置。</span>
+          <button type="button" className="shrink-0 font-medium underline underline-offset-4 disabled:opacity-50" disabled={!backendOk || savingProvider || savingTranscriber} onClick={finish}>先进入笔记库</button>
+        </div>
         {step === 1 && (
           <section className="flex flex-col gap-3">
             <h2 className="font-semibold">第 1 步 · 后端连通性</h2>

@@ -2,11 +2,14 @@
 import json
 import os
 import uuid
+import shutil
+import threading
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, validator, field_validator, model_validator
 from dataclasses import asdict
 
@@ -15,6 +18,7 @@ from app.enmus.exception import NoteErrorEnum
 from app.enmus.note_enums import DownloadQuality
 from app.exceptions.note import NoteError
 from app.services.note import NoteGenerator, logger
+from app.services import note_storage
 from app.services.task_serial_executor import task_serial_executor
 from app.utils.response import ResponseWrapper as R
 from app.utils.url_parser import extract_video_id, normalize_video_url
@@ -28,6 +32,8 @@ from app.enmus.task_status_enums import TaskStatus
 # from app.services.whisperer import transcribe_audio
 
 router = APIRouter()
+_active_tasks = set()
+_active_lock = threading.RLock()
 
 
 class RecordRequest(BaseModel):
@@ -82,12 +88,11 @@ UPLOAD_DIR = "uploads"
 
 
 def save_note_to_file(task_id: str, note):
-    os.makedirs(NOTE_OUTPUT_DIR, exist_ok=True)
-    with open(os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json"), "w", encoding="utf-8") as f:
-        json.dump(asdict(note), f, ensure_ascii=False, indent=2)
+    return note_storage.save_result(task_id, note)
 
 
 def _persist_prefetched_transcript(task_id: str, transcript: dict) -> None:
+    note_storage.valid_id(task_id)
     """把客户端预取的字幕写到 NoteGenerator 期望的转写缓存文件里。
 
     NoteGenerator.generate 会优先读 <task_id>_transcript.json，命中即跳过 download_subtitles
@@ -114,8 +119,8 @@ def _persist_prefetched_transcript(task_id: str, transcript: dict) -> None:
         "segments": cleaned_segments,
     }
 
-    os.makedirs(NOTE_OUTPUT_DIR, exist_ok=True)
-    target = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}_transcript.json")
+    target = note_storage.cache_path(task_id, "transcript")
+    target.parent.mkdir(parents=True, exist_ok=True)
     with open(target, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     logger.info(f"已写入客户端预取字幕缓存: {target} ({len(cleaned_segments)} 段)")
@@ -127,11 +132,11 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
                   video_interval=0, grid_size=[]
                   ):
 
-    if not model_name or not provider_id:
-        raise HTTPException(status_code=400, detail="请选择模型和提供者")
-
+    run_dir = Path("Temp") / "note_jobs" / task_id / uuid.uuid4().hex
     def _execute_note_task():
-        return NoteGenerator().generate(
+        generator = NoteGenerator()
+        generator.run_dir = run_dir
+        return generator.generate(
             video_url=video_url,
             platform=platform,
             quality=quality,
@@ -148,30 +153,118 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
             grid_size=grid_size,
         )
 
-    logger.info(f"任务进入执行队列 (task_id={task_id})")
-    note = task_serial_executor.run(_execute_note_task)
-    logger.info(f"Note generated: {task_id}")
-    if not note or not note.markdown:
-        logger.warning(f"任务 {task_id} 执行失败，跳过保存")
-        return
-    save_note_to_file(task_id, note)
-
-    # 自动建立向量索引（用于 AI 问答），失败不影响笔记生成
     try:
-        from app.services.vector_store import VectorStoreManager
-        VectorStoreManager().index_task(task_id)
+        if not model_name or not provider_id:
+            raise ValueError("请选择模型和提供者")
+        logger.info(f"任务进入执行队列 (task_id={task_id})")
+        note = task_serial_executor.run(_execute_note_task)
+        if not note or not note.markdown:
+            logger.warning(f"任务 {task_id} 执行失败，保留诊断文件")
+            note_storage.set_status(task_id, "FAILED")
+            return
+        note_storage.save_result(task_id, note, staging=run_dir)
+        NoteGenerator()._update_status(task_id, TaskStatus.SUCCESS)
+        try:
+            from app.services.vector_store import VectorStoreManager
+            VectorStoreManager().index_task(task_id)
+        except Exception as e:
+            logger.warning(f"向量索引失败（不影响笔记）: {e}")
+        if run_dir.exists():
+            try:
+                (run_dir / "cleanup_pending.json").write_text(json.dumps({"task_id": task_id}), encoding="utf-8")
+                shutil.rmtree(run_dir)
+            except OSError as e:
+                logger.warning(f"临时截图清理待重试: {run_dir}: {e}")
     except Exception as e:
-        logger.warning(f"向量索引失败（不影响笔记）: {e}")
+        logger.exception("笔记结果保存失败 (task_id=%s)", task_id)
+        note_storage.set_status(task_id, "FAILED")
+        NoteGenerator()._update_status(task_id, TaskStatus.FAILED, message=str(e))
+    finally:
+        with _active_lock:
+            _active_tasks.discard(task_id)
 
 
 @router.post('/delete_task')
 def delete_task(data: RecordRequest):
+    return R.error(msg="旧删除入口已停用；请按任务 ID 先归档，再从归档区彻底删除", code=410)
+
+
+class ImportNotes(BaseModel):
+    tasks: list[dict]
+
+
+@router.get('/notes')
+def list_notes():
+    return R.success(note_storage.list_tasks())
+
+
+@router.post('/notes/import')
+def import_notes(data: ImportNotes):
     try:
-        # TODO: 待持久化完成
-        # NoteGenerator().delete_note(video_id=data.video_id, platform=data.platform)
-        return R.success(msg='删除成功')
-    except Exception as e:
-        return R.error(msg=e)
+        imported = []
+        for task in data.tasks:
+            note_storage.valid_id(task["id"])
+            if (note_storage.ROOT / "_tombstones" / f"{task['id']}.json").exists():
+                continue
+            if task.get("status") not in ("SUCCESS", "FAILED") and not note_storage.get_task(task["id"]):
+                with _active_lock:
+                    if task["id"] not in _active_tasks:
+                        task = dict(task, status="FAILED")
+            imported.append(note_storage.save_task(task, import_legacy=True))
+        return R.success(imported)
+    except (ValueError, FileNotFoundError) as exc:
+        return R.error(str(exc), code=400)
+
+
+@router.get('/notes/{task_id}')
+def read_note(task_id: str):
+    try:
+        task = note_storage.get_task(task_id)
+        return R.success(task) if task else R.error("笔记不存在", code=404)
+    except ValueError as exc:
+        return R.error(str(exc), code=400)
+
+
+@router.post('/notes/{task_id}/archive')
+def archive_note(task_id: str):
+    try:
+        with _active_lock:
+            if task_id in _active_tasks:
+                return R.error("正在生成，暂不能归档", code=409)
+            return R.success(note_storage.set_archived(task_id, True))
+    except (ValueError, FileNotFoundError) as exc:
+        return R.error(str(exc), code=409)
+
+
+@router.post('/notes/{task_id}/restore')
+def restore_note(task_id: str):
+    try:
+        return R.success(note_storage.set_archived(task_id, False))
+    except (ValueError, FileNotFoundError) as exc:
+        return R.error(str(exc), code=409)
+
+
+@router.delete('/notes/{task_id}')
+def permanently_delete_note(task_id: str):
+    try:
+        with _active_lock:
+            if task_id in _active_tasks:
+                return R.error("正在生成，暂不能删除", code=409)
+            note_storage.delete_task(task_id)
+        return R.success({"task_id": task_id})
+    except (ValueError, FileNotFoundError) as exc:
+        return R.error(str(exc), code=409)
+    except Exception:
+        logger.exception("彻底删除失败 task_id=%s", task_id)
+        return R.error("删除未完成，请保留记录并重试", code=500)
+
+
+@router.get('/notes/{task_id}/assets/{relative:path}')
+def note_image(task_id: str, relative: str):
+    try:
+        return FileResponse(note_storage.asset(task_id, relative))
+    except (ValueError, FileNotFoundError):
+        raise HTTPException(status_code=404, detail="图片不存在")
 
 
 @router.post("/upload")
@@ -189,6 +282,8 @@ async def upload(file: UploadFile = File(...)):
 @router.post("/generate_note")
 def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
     try:
+        if not data.model_name or not data.provider_id:
+            return R.error("请选择模型和提供者", code=400)
         # 就绪门禁：本地转写引擎（fast-whisper / mlx-whisper）必须等模型下载完才能跑视频，
         # 否则任务会卡在首次下载（慢 / OOM / 截断），用户只看到一个静默失败的任务。
         # 客户端已抓好字幕（prefetched_transcript）则不需要转写，跳过检查。
@@ -220,24 +315,32 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
         if data.task_id:
             # 如果传了task_id，说明是重试！
             task_id = data.task_id
+            note_storage.valid_id(task_id)
+            existing = note_storage.get_task(task_id)
+            if existing and existing.get("archived_at"):
+                return R.error("请先从归档区恢复笔记再重新生成", code=409)
             logger.info(f"重试模式，复用已有 task_id={task_id}")
         else:
             # 正常新建任务
             task_id = str(uuid.uuid4())
 
-        # 统一先写入 PENDING，表示已进入队列等待串行执行
-        NoteGenerator()._update_status(task_id, TaskStatus.PENDING)
+        with _active_lock:
+            if task_id in _active_tasks:
+                return R.error("此任务正在生成，请等待结束", code=409)
+            _active_tasks.add(task_id)
 
-        # 客户端已经抓好字幕的话，写到转写缓存文件，NoteGenerator 的 cache-hit 逻辑会直接用上
-        if data.prefetched_transcript:
-            try:
+        try:
+            note_storage.create_draft(task_id, data.model_dump(mode="json", exclude={"prefetched_transcript"}))
+            NoteGenerator()._update_status(task_id, TaskStatus.PENDING)
+            if data.prefetched_transcript:
                 _persist_prefetched_transcript(task_id, data.prefetched_transcript)
-            except Exception as e:
-                logger.warning(f"写入预取字幕失败 (task_id={task_id}): {e}")
-
-        background_tasks.add_task(run_note_task, task_id, data.video_url, data.platform, data.quality, data.link,
-                                  data.screenshot, data.model_name, data.provider_id, data.format, data.style,
-                                  data.extras, data.video_understanding, data.video_interval, data.grid_size)
+            background_tasks.add_task(run_note_task, task_id, data.video_url, data.platform, data.quality, data.link,
+                                      data.screenshot, data.model_name, data.provider_id, data.format, data.style,
+                                      data.extras, data.video_understanding, data.video_interval, data.grid_size)
+        except Exception:
+            with _active_lock:
+                _active_tasks.discard(task_id)
+            raise
         return R.success({"task_id": task_id})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -245,8 +348,12 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks):
 
 @router.get("/task_status/{task_id}")
 def get_task_status(task_id: str):
-    status_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.status.json")
-    result_path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
+    try:
+        note_storage.valid_id(task_id)
+    except ValueError:
+        return R.error("任务 ID 不合法", code=400)
+    status_path = note_storage.status_path(task_id)
+    result_path = note_storage.result_path(task_id)
 
     # 优先读状态文件
     if os.path.exists(status_path):
@@ -257,6 +364,10 @@ def get_task_status(task_id: str):
         message = status_content.get("message", "")
 
         if status == TaskStatus.SUCCESS.value:
+            stored = note_storage.get_task(task_id)
+            if stored:
+                return R.success({"status": status, "result": _poll_result(stored),
+                                  "message": message, "task_id": task_id})
             # 成功状态的话，继续读取最终笔记内容
             if os.path.exists(result_path):
                 with open(result_path, "r", encoding="utf-8") as rf:
@@ -286,7 +397,13 @@ def get_task_status(task_id: str):
         })
 
     # 没有状态文件，但有结果
-    if os.path.exists(result_path):
+    stored = note_storage.get_task(task_id)
+    if stored and stored.get("status") == "SUCCESS":
+        return R.success({"status": TaskStatus.SUCCESS.value,
+                          "result": _poll_result(stored), "task_id": task_id})
+    if stored and stored.get("status") == "FAILED":
+        return R.error("任务失败", code=500)
+    if not stored and os.path.exists(result_path):
         with open(result_path, "r", encoding="utf-8") as f:
             result_content = json.load(f)
         return R.success({
@@ -301,6 +418,15 @@ def get_task_status(task_id: str):
         "message": "任务排队中",
         "task_id": task_id
     })
+
+
+def _poll_result(task):
+    versions = task.get("markdown") or []
+    latest = versions[0].get("content", "") if isinstance(versions, list) and versions else ""
+    return {"markdown": latest.replace("../images/", "images/"),
+            "transcript": task.get("transcript") or {},
+            "audio_meta": task.get("audioMeta") or {},
+            "resource_base": task.get("resource_base")}
 
 
 @router.get("/image_proxy")

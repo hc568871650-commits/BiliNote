@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { delete_task, generateNote } from '@/services/note.ts'
+import { archiveNote, deleteNote, generateNote, getNote, importNotes, listNotes, restoreNote } from '@/services/note.ts'
+import { useChatStore } from '@/store/chatStore'
 import { v4 as uuidv4 } from 'uuid'
 import toast from 'react-hot-toast'
 import { get, set, del } from 'idb-keyval'
 
 
-export type TaskStatus = 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILD'
+export type TaskStatus = 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | string
 
 export interface AudioMeta {
   cover_url: string
@@ -36,6 +37,7 @@ export interface Markdown {
   style: string
   model_name: string
   created_at: string
+  resource_base?: string
 }
 
 export interface Task {
@@ -45,6 +47,8 @@ export interface Task {
   status: TaskStatus
   audioMeta: AudioMeta
   createdAt: string
+  archived_at?: string | null
+  resource_base?: string
   formData: {
     video_url: string
     link: undefined | boolean
@@ -53,19 +57,24 @@ export interface Task {
     quality: string
     model_name: string
     provider_id: string
+    style?: string
   }
 }
 
 interface TaskStore {
   tasks: Task[]
   currentTaskId: string | null
-  addPendingTask: (taskId: string, platform: string) => void
+  addPendingTask: (taskId: string, platform: string, formData: any) => void
   updateTaskContent: (id: string, data: Partial<Omit<Task, 'id' | 'createdAt'>>) => void
-  removeTask: (id: string) => void
+  archiveTask: (id: string) => Promise<void>
+  restoreTask: (id: string) => Promise<void>
+  removeTask: (id: string) => Promise<void>
+  syncNotes: () => Promise<void>
+  loadTask: (id: string) => Promise<void>
   clearTasks: () => void
   setCurrentTask: (taskId: string | null) => void
   getCurrentTask: () => Task | null
-  retryTask: (id: string) => void
+  retryTask: (id: string, payload?: any) => Promise<void>
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -122,6 +131,7 @@ export const useTaskStore = create<TaskStore>()(
                   style: task.formData.style || '',
                   model_name: task.formData.model_name || '',
                   created_at: new Date().toISOString(),
+                  resource_base: data.resource_base,
                 }
 
                 let updatedMarkdown: Markdown[]
@@ -167,6 +177,10 @@ export const useTaskStore = create<TaskStore>()(
         const task = get().tasks.find(task => task.id === id)
         console.log('retry',task)
         if (!task) return
+        if (task.archived_at) {
+          toast.error('请先恢复归档笔记再重新生成')
+          return
+        }
 
         const newFormData = payload || task.formData
         try {
@@ -203,22 +217,47 @@ export const useTaskStore = create<TaskStore>()(
       },
 
 
-      removeTask: async id => {
-        const task = get().tasks.find(t => t.id === id)
-
-        // 更新 Zustand 状态
-        set(state => ({
-          tasks: state.tasks.filter(task => task.id !== id),
-          currentTaskId: state.currentTaskId === id ? null : state.currentTaskId,
-        }))
-
-        // 调用后端删除接口（如果找到了任务）
-        if (task) {
-          await delete_task({
-            video_id: task.audioMeta.video_id,
-            platform: task.platform,
-          })
+      syncNotes: async () => {
+        // Keep the old IndexedDB snapshot until the server confirms its import.
+        const localTasks = get().tasks
+        try {
+          if (localTasks.length) await importNotes(localTasks)
+          const remote = await listNotes()
+          set(state => ({
+            tasks: remote,
+            currentTaskId: state.currentTaskId && remote.some(t => t.id === state.currentTaskId)
+              ? state.currentTaskId : null,
+          }))
+        } catch (error) {
+          console.error('笔记同步失败', error)
+          toast.error('笔记同步失败，已保留本机记录，请稍后重试')
         }
+      },
+      loadTask: async id => {
+        try {
+          const detail = await getNote(id)
+          set(state => ({ tasks: state.tasks.map(t => t.id === id ? detail : t) }))
+        } catch (error) {
+          console.error('加载笔记失败', error)
+        }
+      },
+      archiveTask: async id => {
+        const task = get().tasks.find(t => t.id === id)
+        if (!task || !['SUCCESS', 'FAILED'].includes(task.status)) return
+        const updated = await archiveNote(id)
+        set(state => ({
+          tasks: state.tasks.map(t => t.id === id ? updated : t),
+        }))
+      },
+      restoreTask: async id => {
+        const updated = await restoreNote(id)
+        set(state => ({ tasks: state.tasks.map(t => t.id === id ? updated : t) }))
+      },
+      removeTask: async id => {
+        await deleteNote(id)
+        set(state => ({ tasks: state.tasks.filter(t => t.id !== id),
+          currentTaskId: state.currentTaskId === id ? null : state.currentTaskId }))
+        useChatStore.getState().clearChat(id)
       },
 
       clearTasks: () => set({ tasks: [], currentTaskId: null }),

@@ -230,7 +230,7 @@ export default function ChatPanel({ taskId, mode, onModeChange }: ChatPanelProps
   }
 
   return (
-    <div className="flex h-full flex-col border-l">
+    <div className="flex h-full flex-col border-l bg-background">
       {/* 头部 */}
       <div className="flex items-center justify-between border-b px-3 py-2">
         <span className="text-sm font-medium">AI 问答</span>
@@ -262,7 +262,7 @@ export default function ChatPanel({ taskId, mode, onModeChange }: ChatPanelProps
       </div>
 
       {/* 消息列表 */}
-      <div className="flex-1 overflow-hidden">
+      <div className="select-text flex-1 overflow-hidden">
         {messages.length === 0 && !loading ? (
           <div className="flex h-full items-center justify-center text-center text-sm text-neutral-400">
             <div>

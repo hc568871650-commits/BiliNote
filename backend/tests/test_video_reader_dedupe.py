@@ -1,6 +1,7 @@
 import importlib.util
 import pathlib
 import re
+import shutil
 import sys
 import tempfile
 import types
@@ -34,6 +35,8 @@ def _install_stubs():
 
     path_helper_mod = types.ModuleType("app.utils.path_helper")
     ffmpeg_mod = types.ModuleType("ffmpeg")
+    ffmpeg_helper_mod = types.ModuleType("ffmpeg_helper")
+    ffmpeg_helper_mod.find_ffmpeg_binary = lambda name: shutil.which(name) or name
 
     pil_mod = types.ModuleType("PIL")
     pil_image_mod = types.ModuleType("PIL.Image")
@@ -74,19 +77,21 @@ def _install_stubs():
     sys.modules["PIL.ImageDraw"] = pil_draw_mod
     sys.modules["PIL.ImageFont"] = pil_font_mod
     sys.modules["ffmpeg"] = ffmpeg_mod
+    sys.modules["ffmpeg_helper"] = ffmpeg_helper_mod
     sys.modules["app.utils.logger"] = logger_mod
     sys.modules["app.utils.path_helper"] = path_helper_mod
 
 
 def _load_video_reader_module():
-    _install_stubs()
     root = pathlib.Path(__file__).resolve().parents[1]
     module_path = root / "app" / "utils" / "video_reader.py"
     spec = importlib.util.spec_from_file_location("video_reader", module_path)
     if spec is None or spec.loader is None:
         raise ImportError("video_reader module spec not found")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with patch.dict(sys.modules):
+        _install_stubs()
+        spec.loader.exec_module(module)
     return module
 
 
@@ -95,7 +100,7 @@ VideoReader = video_reader_module.VideoReader
 
 
 def _make_fake_ffmpeg_runner(colors_by_second):
-    def _runner(cmd, check=True):
+    def _runner(cmd, **_kwargs):
         output_path = next((arg for arg in cmd if isinstance(arg, str) and arg.endswith(".jpg")), None)
         if output_path is None:
             raise AssertionError("Output path not found in ffmpeg cmd")
@@ -106,7 +111,7 @@ def _make_fake_ffmpeg_runner(colors_by_second):
         payload = colors_by_second[sec]
         with open(output_path, "wb") as f:
             f.write(payload)
-        return 0
+        return types.SimpleNamespace(returncode=0, stderr=b"")
 
     return _runner
 

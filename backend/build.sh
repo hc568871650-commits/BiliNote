@@ -30,12 +30,14 @@ pyinstaller \
   --paths backend \
   --distpath ./BillNote_frontend/src-tauri/bin \
   --workpath backend/build \
-  --specpath backend \
+  --specpath . \
   --hidden-import uvicorn \
   --hidden-import fastapi \
   --hidden-import starlette \
-  --add-data "app/db/builtin_providers.json:." \
-  --add-data ".env:." \
+  --collect-all chromadb \
+  --add-data "backend/app/db/builtin_providers.json:." \
+  --add-data "backend/app/db/builtin_providers.json:app/db" \
+  --add-data "backend/.env:." \
   "$(pwd)/backend/main.py"
 
 # 步骤 3: 清理在项目根目录创建的临时 .env 文件

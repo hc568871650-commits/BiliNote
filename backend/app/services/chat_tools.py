@@ -15,7 +15,8 @@ NOTE_OUTPUT_DIR = os.getenv("NOTE_OUTPUT_DIR", "note_results")
 
 
 def _load_note_data(task_id: str) -> Optional[dict]:
-    path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
+    from app.services.note_storage import result_path
+    path = result_path(task_id)
     if not os.path.exists(path):
         return None
     with open(path, "r", encoding="utf-8") as f:

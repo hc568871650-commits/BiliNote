@@ -60,6 +60,12 @@ async def lifespan(app: FastAPI):
         logger.info("[startup 4/5] seed_default_providers() — 初始化默认 LLM 供应商")
         seed_default_providers()
 
+        from app.services.note_storage import cleanup_completed_runs, recover_interrupted_runs
+        for task_id in recover_interrupted_runs():
+            logger.warning("中断任务已标记为可重试: %s", task_id)
+        for pending_dir in cleanup_completed_runs():
+            logger.warning("临时截图清理待重试: %s", pending_dir)
+
         # 把已配置的代理 export 到环境变量，让 huggingface_hub（whisper 模型下载）
         # 也能走代理——含转写时的按需下载（issue #417）。
         from app.services.proxy_config_manager import ProxyConfigManager

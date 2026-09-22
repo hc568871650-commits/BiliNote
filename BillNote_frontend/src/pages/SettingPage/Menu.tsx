@@ -54,12 +54,12 @@ const Menu = () => {
     // },
   ]
   return (
-    <div className="flex h-full flex-col">
-      <div className={'flex w-full flex-col gap-2'}>
+    <div className="flex min-w-0 flex-col lg:h-full">
+      <div className={'hidden w-full flex-col gap-2 lg:flex'}>
         <div className="text-2xl font-medium">设置</div>
-        <div className="text-sm font-light text-gray-800">全局配置与模型设置</div>
+        <div className="text-sm font-light text-muted-foreground">全局配置与模型设置</div>
       </div>
-      <div className="mt-6 flex-1">
+      <div className="flex min-w-0 gap-1 lg:mt-6 lg:block lg:flex-1">
         {menuList &&
           menuList.map(item => {
             return <MenuBar key={item.id} menuItem={item} />

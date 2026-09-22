@@ -1,3 +1,5 @@
+> **个人维护分支 `my-dev`**：基于上游 v2.4.5，整合学习工作台、笔记管理、桌面体验与转写修复。功能和验证范围见 [定制版说明](CUSTOMIZATIONS.md)。下方保留上游项目介绍及链接；上游下载链接不包含本分支的定制功能。
+
 <div style="display: flex; justify-content: center; align-items: center; gap: 10px;
 ">
     <p align="center">
