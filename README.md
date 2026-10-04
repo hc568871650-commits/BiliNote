@@ -1,422 +1,118 @@
-<div style="display: flex; justify-content: center; align-items: center; gap: 10px;
-">
-    <p align="center">
-  <img src="./doc/icon.svg" alt="BiliNote Banner" width="50" height="50"  />
-</p>
-<h1 align="center" > BiliNote v2.4.4</h1>
-</div>
+# BiliNote · 升级版
 
-<p align="center"><i>AI 视频笔记生成工具 让 AI 为你的视频做笔记</i></p>
+**集视频笔记、知识管理与 AI 辅助阅读于一体的学习工作台。**
 
-<p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue.svg" />
-  <img src="https://img.shields.io/badge/frontend-react%2019-blue" />
-  <img src="https://img.shields.io/badge/backend-fastapi-green" />
-  <img src="https://img.shields.io/badge/GPT-openai%20%7C%20deepseek%20%7C%20qwen-ff69b4" />
-  <img src="https://img.shields.io/badge/docker-ghcr.io-blue" />
-  <img src="https://img.shields.io/badge/status-active-success" />
-  <img src="https://img.shields.io/github/stars/jefferyhcool/BiliNote?style=social" />
-</p>
+本次升级围绕笔记生成后的阅读、问答与整理流程展开，重新设计工作区布局，完善笔记库管理，新增引用式阅读助手、计划式整理助手和长对话上下文管理，并统一模型配置与外观设置。
 
-<p align="center">
-  <a href="https://www.bilinote.app/"><b>🚀 BiliNote Pro · 在线版</b></a>
-</p>
+![工作台总览：笔记导航、文件夹、章节目录与阅读区](doc/showcase/01-workspace.jpg)
 
-<p align="center">
-  <b>不想折腾部署？</b>访问 <a href="https://www.bilinote.app/"><b>www.bilinote.app</b></a> 即开即用 —— 免安装、免配置环境、免下模型，注册即可把视频转成笔记。
-  <br/>
-  本地部署遇到的依赖、代理、模型下载这些坑，云端版统统不用管。
-</p>
+## 升级概览
 
-<p align="center">
-  <a href="https://www.bilinote.app/">
-    <img src="https://img.shields.io/badge/%E7%AB%8B%E5%8D%B3%E4%BD%93%E9%AA%8C-BiliNote%20Pro-ff5c5c?style=for-the-badge" alt="立即体验 BiliNote Pro" />
-  </a>
-</p>
+| 模块 | 主要升级 |
+| --- | --- |
+| 工作区 | 统一图标导航，可折叠笔记栏，独立的新建与阅读视图 |
+| 笔记管理 | 文件夹、搜索筛选、收藏置顶、标签备注、学习状态与批量操作 |
+| 阅读体验 | 章节导航、阅读位置记忆、继续阅读、可折叠工具栏与专注模式 |
+| 阅读助手 | 选段引用、多段引用、常驻对话、临时聊天及图片与文本附件 |
+| 整理助手 | 自然语言提出需求，生成可审阅计划，确认执行与操作撤销 |
+| 上下文管理 | 用量提示、自动压缩、`/compact` 手动压缩与原始记录保留 |
+| 模型配置 | 按生成、阅读、整理用途设置默认模型，支持会话级模型与思考档位选择 |
+| 界面外观 | 深浅主题、跟随系统、8 种强调色、字体字号与动态效果设置 |
 
+## 工作区与笔记生成
 
+采用“导航栏、笔记侧栏、内容区”的布局，将新建与阅读拆分为独立视图。笔记侧栏可按需展开，减少常驻控件对正文空间的占用。
 
-## ✨ 项目简介
+新建界面集中呈现视频来源、模型和笔记风格，视频理解、输出格式与补充备注归入高级选项。新建与阅读分别保留侧栏偏好，切换设置后可恢复工作区和未提交草稿。
 
-BiliNote 是一个开源的 AI 视频笔记助手，支持通过哔哩哔哩、YouTube、抖音等视频链接，自动提取内容并生成结构清晰、重点明确的 Markdown 格式笔记。支持插入截图、原片跳转、AI 问答等功能。
+![笔记生成界面：视频来源、模型、风格与高级选项](doc/showcase/02-create.jpg)
 
-> 💡 **想直接用、不想本地部署？** —— [BiliNote Pro 在线版 www.bilinote.app](https://www.bilinote.app/) 已上线，云端托管、开箱即用，省去依赖安装 / 代理配置 / 模型下载的全部麻烦。
+## 笔记库与阅读体验
 
-## 🌐 在线使用（推荐）
+围绕内容组织、检索和学习进度完善笔记管理：
 
-直接访问 **[www.bilinote.app](https://www.bilinote.app/)** 即可使用 BiliNote Pro 在线版，无需本地部署。
+- **分类与检索**：通过文件夹、标签、搜索、组合筛选和排序组织笔记。
+- **重点管理**：支持收藏、置顶、备注及批量操作，提供归档与恢复入口。
+- **学习状态**：以“待读、阅读中、已读完”记录学习进度。
+- **连续阅读**：保存阅读位置，支持继续阅读和章节跳转。
+- **阅读布局**：提供字号、阅读宽度、专注模式与工具栏折叠设置。
 
-## 💼 企业AI落地咨询服务
+正文目录与顶部章节导航采用统一跳转目标；原文参照、思维导图、复制和导出功能整合在阅读工具区。
 
-帮助团队将开源能力转化为商业价值。免费15分钟诊断 → 加微信 JefferyHJW
+*工作台总览图展示了笔记分类、学习状态、章节目录与继续阅读入口。*
 
-## 📝 使用文档
-详细文档可以查看[这里](https://docs.bilinote.app/)
-## 📦 桌面版下载
-本项目提供了 Windows 和 macOS 桌面客户端，可在 [Releases](https://github.com/JefferyHcool/BiliNote/releases) 页面下载最新版本。
+## AI 阅读助手
 
-> Windows 用户请注意：一定要在没有中文路径的环境下运行。
+阅读助手与笔记正文并排显示，支持基于当前内容进行解释、要点提取和复习问答。选中文字或多个段落后，可直接作为引用加入对话，并保留来源信息，便于核对原文。
 
-## 💎 BiliNote AI笔记系统一对一搭建服务
+| 能力 | 说明 |
+| --- | --- |
+| 常驻对话 | 保留阅读讨论，支持连续追问 |
+| 临时聊天 | 独立处理临时问题，可将消息、附件和草稿转入常驻对话 |
+| 引用与附件 | 支持选段、多段引用，以及图片、TXT、Markdown 附件的添加、预览与移除 |
+| 会话设置 | 在输入区集中选择模型与兼容的思考档位 |
 
-提供 **BiliNote AI笔记系统一对一搭建服务**：专人一对一远程协助，从环境部署、模型配置到上手使用全程陪跑，帮你快速跑通整套系统。扫码添加微信，备注「搭建服务」即可咨询：
+图片理解能力取决于所选模型。
 
-<table align="center">
-  <tr>
-    <td align="center"><img src="./doc/remote-install-wechat.png" alt="BiliNote AI笔记系统一对一搭建服务" width="220" /><br/>BiliNote AI笔记系统一对一搭建服务</td>
-  </tr>
-</table>
+![AI 阅读助手：正文参照、连续问答与紧凑输入区](doc/showcase/03-reading-assistant.jpg)
 
-## 🔧 功能特性
+## AI 整理助手
 
-- 支持多平台：Bilibili、YouTube、本地视频、抖音、快手
-- 支持返回笔记格式选择
-- 支持笔记风格选择
-- 支持多模态视频理解
-- 支持多版本记录保留
-- 支持自行配置 GPT 大模型（OpenAI、DeepSeek、Qwen 等）
-- 本地模型音频转写（支持 Fast-Whisper、MLX-Whisper、Groq、BCut）
-- GPT 大模型总结视频内容
-- 自动生成结构化 Markdown 笔记
-- 可选插入截图（自动截取）
-- 可选内容跳转链接（关联原视频）
-- 任务记录与历史回看
-- 基于 RAG 的笔记内容 AI 问答（支持 Function Calling）
-- 笔记顶部视频封面 Banner 展示
-- 工作区和生成历史面板支持折叠/展开
+支持通过自然语言描述笔记整理需求，将操作转化为包含目标位置、受影响笔记和具体变更的整理计划。
 
-### v2.3.0 新增
+**提出需求 → 审阅计划 → 确认执行 → 查看结果或撤销**
 
-- 全局代理：一处配置同时作用于 AI 模型接口、转写接口（Groq 等）、YouTube 下载（设置 → 下载配置页），支持 `HTTP_PROXY` 环境变量兜底
-- 转写模型就绪门禁：本地引擎模型没下载好时拦截视频任务，引导先去下载，不再静默卡在首次下载
-- 桌面端后端健康监控韧性：退出自动清理 sidecar、启动失败展示原因 + 日志、不再无限「加载中」
-- whisper 模型损坏自愈：`model.bin` 截断时自动删除重下；空 API Key / 新模型 temperature 不兼容给出清晰提示
-- Docker 部署韧性：`BASE_REGISTRY` 可换国内镜像源、restart 策略修正、`.env.example` 端口与默认模型修正、新增部署 FAQ
+例如，“将办公效率文件夹中的两篇笔记移至默认文件夹”，会先生成明确的移动计划，再由用户确认执行。目标不明确或操作范围存在歧义时，助手会进一步澄清。
 
-### v2.2.3 修订
+支持逻辑文件夹管理、笔记移动、标签、归档与恢复。操作范围限定于笔记管理信息，不涉及删除笔记、修改正文或操作本地文件。
 
-- 修：vite build 在 CI 中报 'Rollup failed to resolve import @tauri-apps/api/event'（缺直接依赖声明）
+![AI 整理助手：计划明细、执行结果与撤销入口](doc/showcase/04-organizer.jpg)
 
-### v2.2.2 修订
+*整理流程截图来自隔离验证环境；输入区在后续更新中已调整为下方所示的紧凑布局。*
 
-- 修复 v2.2.0 桌面端 Tauri 构建失败（main.yml 的 pnpm 版本没 pin，pnpm 11 不兼容 Node 20）
+## 长对话与上下文管理
 
-### v2.2.1 修订
+输入区新增上下文用量指示，支持查看已用比例、剩余比例和 token 用量。输入 `/` 可打开指令菜单，通过 `/compact` 手动压缩较早对话；自动压缩在达到触发条件时执行。
 
-- 修复 v2.2.0 ghcr.io 镜像构建失败（pnpm@latest 拉到 11，与 Node 20 不兼容；pin 到 pnpm 9.15.0）
+压缩后使用摘要承接较早历史，保留最近消息原文及完整聊天记录。整理计划与审批状态独立保存，压缩操作不会改变待确认计划或执行授权。
 
-### v2.2.0 新增
+| 压缩指令 | 用量提示 |
+| --- | --- |
+| ![compact 指令菜单](doc/showcase/05-slash-commands.jpg) | ![上下文用量与剩余比例](doc/showcase/06-context.jpg) |
 
-- **浏览器插件**笔记选项与 web 端完整对齐：style 9 个预设下拉、format 4 个 checkbox、extras 文本框、多模态视频理解开关
-- **桌面客户端**首启 4 步引导（连通自检 → 供应商/模型 → 转写引擎 → Cookie 提示）
-- **桌面客户端**右下角后端运行状态指示，点开看日志、一键重启
-- **桌面客户端**启动期主动检测中文 / 空格 / 不可写安装路径，弹横幅告警
-- Whisper 默认 size 从 medium（~1.5GB）改为 tiny（~75MB）；切大模型时显式 confirm
-- 修：whisper 半成品模型目录死循环；`/deploy_status` 在没装 torch 的部署 500
-- 详见 [CHANGELOG.md](./CHANGELOG.md)
+*272K 为应用设置的上下文预算，实际容量取决于模型与服务商；本地用量估算不等同实际计费。压缩使用当前所选模型生成摘要。*
 
-### v2.1.4 修订
+## 分用途模型配置
 
-- CI：桌面端 Tauri 构建去掉 Linux（17m+ 慢线退役；Linux 用户继续走 Docker 镜像）
-- CI：commitlint workflow 修复 + 规范 release merge commit 标题约定
+笔记生成、阅读问答、整理与帮助分别设置默认模型与服务商，支持多个用途共用模型，也支持独立配置。会话内临时选择仅作用于当前会话。
 
-### v2.1.3 修订
+设置导航统一划分为个人设置、服务配置和应用管理，集中管理常规偏好、外观、模型服务商、音频转写、视频下载及运行状态。
 
-- 修复 DeepSeek 等非多模态供应商被 400 拒绝的问题（issue #282）：`UniversalGPT` 的 message builder 按是否带图切换 string / 多模态数组形态
-- 感谢 @voidborne-d (#345)
+![分用途模型配置：生成、阅读与整理分别设置](doc/showcase/07-purpose-models.jpg)
 
-### v2.1.2 修订
+## 界面与个性化
 
-- 修复 v2.1.1 触发的 ghcr.io Docker 镜像构建失败（Node 18 + Tailwind v4 不兼容、缺 lockfile）
-- README 补上微信群二维码
+深色模式采用柔和的灰蓝背景，同时提供浅色与跟随系统模式。8 种强调色统一应用于导航选中状态、主要操作、链接和思维导图。
 
-### v2.1.1 修订
+支持调整界面字体、界面字号、代码字号与动态效果；笔记正文字号可在阅读工具栏中独立设置。
 
-- 工程化与文档收尾：CONTRIBUTING.md / RELEASING.md / issue + PR 模板 / commitlint CI / 插件发版工作流
-- 关于页群聊二维码：换成最新版，改为 import 本地资源，不再依赖 CDN
-- 关于页移除 QQ 群入口（仅保留微信群）
-- 详见 [CHANGELOG.md](./CHANGELOG.md)
+![外观设置：显示模式、强调色、字体与背景](doc/showcase/08-appearance.jpg)
 
-### v2.1.0 新增
+## 近期更新
 
-- 浏览器插件（Chrome / Edge / Firefox MV3）—— 工具栏 popup、视频页悬浮按钮、右键菜单、侧边栏（Markdown / 思维导图 / AI 问答）四件套
-- 插件设置页五大块：模型供应商 CRUD、音频转写配置、下载配置（含浏览器 Cookie 一键同步）、部署监控
-- B 站字幕优先：插件在用户浏览器里直接抓字幕（带本地登录态 cookie），跳过后端音频转写
-- 后端 `BilibiliSubtitleFetcher`：非插件场景下走 player API 拿字幕，作为 yt-dlp 兜底
-- mlx-whisper 仓库 ID 修正（修复模型 404）
-- 后端 CORS 改用 regex，兼容浏览器扩展源
-- 详见 [CHANGELOG.md](./CHANGELOG.md)
+**2026-10-04 · 交互与稳定性改进**
 
-### v2.0.0 新增
+- **目录导航**：重建章节锚点，统一正文目录与顶部目录的跳转行为。
+- **问答异常处理**：空回复提供明确提示，并恢复问题与附件。
+- **会话衔接**：临时聊天转入常驻对话时同步处理消息、附件和草稿。
+- **整理计划校验**：重新核对操作范围与目标，执行须经计划按钮确认。
+- **输入区优化**：集中模型与思考控件，新增斜杠菜单，保存选择偏好。
+- **状态展示**：精简后端状态按钮，并根据面板布局避让输入区。
 
-- 基于 RAG 的笔记内容 AI 问答功能，支持半屏/全屏模式
-- AI 问答支持 Function Calling，模型可主动查询原文数据
-- RAG 索引支持视频元信息（标题、作者、简介、标签等）
-- AI 回复支持 Markdown 渲染
-- 笔记顶部新增视频封面 Banner
-- 工作区和生成历史面板支持折叠/展开
-- 笔记开头添加来源链接功能
-- YouTube 字幕优先获取，有字幕时跳过音频下载
-- 性能优化与转写器配置改进
+## 版本说明
 
-## 📸 截图预览
-![screenshot](./doc/image1.png)
-![screenshot](./doc/image3.png)
-![screenshot](./doc/image.png)
-![screenshot](./doc/image4.png)
-![screenshot](./doc/image5.png)
+本页为基于 BiliNote 的独立扩展版本介绍，非上游官方发布。本次公开内容限于升级说明与界面截图，暂不提供对应版本的源码、安装包及配套文件；仓库既有代码不包含本页展示的全部升级。
 
-## 🚀 快速开始
+截图采用隔离环境中的示例数据与模拟模型回答，用于说明界面和交互。工作区、阅读助手、模型配置与外观截图更新于 2026-10-04。
 
-### 方式一：Docker 部署（推荐）
-
-确保已安装 Docker，直接拉取预构建镜像运行：
-
-```bash
-docker pull ghcr.io/jefferyhcool/bilinote:latest
-
-docker run -d -p 80:80 \
-  -v bilinote-data:/app/backend/data \
-  -v bilinote-config:/app/backend/config \
-  -v bilinote-static:/app/backend/static \
-  -v bilinote-models:/app/backend/models \
-  --name bilinote \
-  ghcr.io/jefferyhcool/bilinote:latest
-```
-
-上面四个卷分别持久化：`data`（SQLite 数据库 + 生成的笔记）、`config`（LLM 供应商配置 / Cookie / 转写设置）、`static`（笔记引用的视频截图）、`models`（Whisper 模型缓存，可选，避免每次重新下载）。这样 `docker pull` 升级新镜像、删旧容器重建后，配置和历史都不会丢。
-
-> ⚠️ **不要**用 `-v 卷名:/app/backend` 挂整个后端目录——命名卷会用首次启动时的镜像内容固化，之后 `docker pull` 升级也会被旧代码盖住，导致「升级不生效」。只挂上面这些数据子目录即可。
-
-访问：`http://localhost`
-
-也可以使用 docker-compose 本地构建：
-
-```bash
-cp .env.example .env       # 第一次部署务必先创建 .env，否则 BACKEND_PORT/APP_PORT 等变量为空会启动失败
-docker-compose up --build -d
-
-# GPU 加速部署（需要 NVIDIA GPU + NVIDIA Container Toolkit）
-docker-compose -f docker-compose.gpu.yml up --build -d
-```
-
-#### Docker 部署常见问题（FAQ）
-
-社区反馈最集中的几个坑，遇到先按下面排查：
-
-**0. 国内拉不到 docker.io（build 阶段报 `dial tcp ... i/o timeout`）**
-
-`docker-compose build` 拉 `python:3.11-slim` / `node:20-alpine` / `nginx:1.25-alpine` 时连 `auth.docker.io` 超时。三种解法，按推荐顺序：
-
-- **方法 A：直接用预构建镜像（最省事）**——不要本地 build，跳到上面的 `docker pull ghcr.io/jefferyhcool/bilinote:latest` 路径，ghcr.io 在国内通常比 docker.io 顺。
-- **方法 B：配置 Docker daemon 镜像加速器**——编辑 `~/.docker/daemon.json`（Linux 在 `/etc/docker/daemon.json`），加：
-  ```json
-  {
-    "registry-mirrors": ["https://docker.m.daocloud.io"]
-  }
-  ```
-  然后重启 Docker Desktop / `sudo systemctl restart docker`。这是一劳永逸的做法。
-- **方法 C：临时切换 base image 镜像源**——本项目所有 Dockerfile 都暴露了 `BASE_REGISTRY` build-arg：
-  ```bash
-  BASE_REGISTRY=docker.m.daocloud.io docker-compose build
-  docker-compose up -d
-  ```
-  或永久写到 `.env`：`echo 'BASE_REGISTRY=docker.m.daocloud.io' >> .env`。
-
-注意：Chinese 公共 docker 镜像源时常被关停，2025-2026 之间可用的列表会变；如果 `docker.m.daocloud.io` 不通，搜一下"Docker 镜像加速 可用"找最新可用源即可。
-
-**1. 容器一直 restart / unhealthy**
-
-先看后端日志：
-```bash
-docker logs -f bilinote-backend
-```
-后端启动会按顺序打印 `[startup 1/5] ... [startup 5/5] 启动完成`。若日志卡在某一步或出现 `[startup FAILED]`，就是那一步的问题，常见：
-- **卡在 `[startup 3/5]`**：转写器配置读不到。检查 `.env` 里 `TRANSCRIBER_TYPE` 是否写错，`mlx-whisper` 只能在 Apple Silicon 用，Linux/Docker 请用 `fast-whisper` 或 `groq`。
-- **首次跑视频时容器被 kill**：whisper 模型下载触发 OOM。先把 `.env` 里 `WHISPER_MODEL_SIZE` 改成 `tiny`，跑通后再去前端「音频转写配置」里逐档升。
-
-**2. 改了 `.env` 没生效**
-
-区分两类变量：
-- `VITE_*` 是**构建时**变量（前端 bundle 里硬编码），改完必须 `docker-compose build frontend && docker-compose up -d`。只 `restart` 不会重新打包。
-- 其他后端变量（`TRANSCRIBER_TYPE`、`WHISPER_MODEL_SIZE`、`FFMPEG_BIN_PATH` 等）是**运行时**变量，改完 `docker-compose up -d` 即可。
-
-注意：**LLM API key 不要写 `.env`**，从前端「模型供应商」页面录入，会保存到 SQLite 数据库并持久化。
-
-**3. 数据存在哪？删容器会丢吗？**
-
-`docker-compose` 用的是 `./backend:/app` 绑挂，下面这些文件都在宿主机的 `./backend/` 目录里、删容器不会丢：
-- `./backend/bili_note.db` —— SQLite 库（含 LLM 供应商配置、笔记历史）
-- `./backend/config/transcriber.json` —— 转写器运行时配置
-- `./backend/static/screenshots/` —— 视频截图
-- `./backend/uploads/` —— 上传的本地视频
-
-要彻底重置就 `docker-compose down && rm backend/bili_note.db backend/config/transcriber.json`。
-
-**4. 前端打开是空白页 / 报 502**
-
-通常是 nginx 起来了但 backend 还没 healthy。`docker ps` 看 backend 容器 STATUS 是不是 `(healthy)`；若长期 `(unhealthy)`，按问题 1 排查后端日志。
-
-**5. 不要用 `restart: on-failure:N`**
-
-如果你 fork 后改过 compose 文件、把 restart 策略改成了 `on-failure:3`：任何 3 次连续崩溃都会让容器永远不再启动，之后改 `.env` 也没用。本项目自带的 compose 已经统一用 `unless-stopped`。
-
-### 方式二：源码部署
-
-#### 1. 克隆仓库
-
-```bash
-git clone https://github.com/JefferyHcool/BiliNote.git
-cd BiliNote
-mv .env.example .env
-```
-
-#### 2. 启动后端（FastAPI）
-
-```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-```
-
-#### 3. 启动前端（Vite + React）
-
-```bash
-cd BillNote_frontend
-pnpm install
-pnpm dev
-```
-
-访问：`http://localhost:3015`
-
-## ⚙️ 依赖说明
-
-### 🎬 FFmpeg
-本项目依赖 ffmpeg 用于音频处理与转码，源码部署时必须安装：
-```bash
-# Mac (brew)
-brew install ffmpeg
-
-# Ubuntu / Debian
-sudo apt install ffmpeg
-
-# Windows
-# 请从官网下载安装：https://ffmpeg.org/download.html
-```
-> ⚠️ 若系统无法识别 ffmpeg，请将其加入系统环境变量 PATH
->
-> Docker 部署已内置 FFmpeg，无需额外安装。
-
-### 🚀 CUDA / GPU 加速（可选）
-
-本地 **Faster Whisper** 转写可用 NVIDIA GPU 加速（在线引擎 Groq / 必剪 / 快手 与 GPU 无关）。仓库已自带 GPU 镜像与编排，**无需改代码、无需手动配置 device**——后端会自动检测 CUDA，可用就走 GPU，否则回退 CPU。
-
-**1. 宿主机前提**
-
-- NVIDIA 显卡 + 较新驱动（CUDA ≥ 12.4），宿主机 `nvidia-smi` 能正常输出；
-- 安装 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)（最易漏的一步，没它 Docker 进不去 GPU）。装完验证：
-  ```bash
-  docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
-  ```
-  能列出显卡即 OK。
-
-**2. 切换到 GPU 编排**（在源码目录里）
-
-CPU 与 GPU 两套 compose 用了相同的容器名，先停掉当前栈再起 GPU 栈：
-
-```bash
-docker-compose down                                     # 停掉当前（CPU）栈
-docker-compose -f docker-compose.gpu.yml up --build -d   # 用 GPU 栈重建
-```
-
-- GPU 栈用 `backend/Dockerfile.gpu`（CUDA 12.4.1 + cuDNN 基础镜像，并额外装 torch 用于 CUDA 检测），compose 已声明 `deploy...devices: nvidia` 自动透传 GPU。
-- **数据不丢**：两套 compose 都把 `./backend` 整目录绑挂进容器，数据库 / 配置 / 已下载模型都保留。
-- 首次构建较大较慢（CUDA 基础镜像数 GB + torch），耐心等。
-
-**3. 启用并确认**
-
-- 「设置 → 音频转写配置」转写引擎选 **Faster Whisper（本地）**，GPU 下可放心选大模型（如 `large-v3`）。
-- 确认真的走了 GPU：`docker logs bilinote-backend | grep -i cuda` 看到 `CUDA 可用，使用 GPU`；或转写时宿主机 `nvidia-smi` 能看到 python 进程占显存。
-
-**国内镜像**：GPU compose 支持 `BASE_REGISTRY` / `APT_MIRROR` / `PIP_INDEX` 这几个 build-arg（注意 `BASE_REGISTRY` 选的源必须支持 `nvidia/cuda` 命名空间，否则拉不到 CUDA 基础镜像）。
-
-**起来了但没走 GPU？** 依次排查：① 宿主机 `nvidia-smi` 是否正常 → ② NVIDIA Container Toolkit 是否装好（上面 `--gpus all` 测试是否通过）→ ③ `docker logs bilinote-backend` 是否有 CUDA / cuDNN 报错（驱动 CUDA 版本需 ≥ 12.4）。
-
-`fast-whisper` 本身的 GPU 依赖说明可参考：[faster-whisper 项目](https://github.com/SYSTRAN/faster-whisper#requirements)
-
-### 🐳 使用 Docker 一键部署
-
-确保你已安装 Docker，然后直接拉取预构建镜像运行：
-
-```bash
-# 拉取最新镜像
-docker pull ghcr.io/jefferyhcool/bilinote:latest
-
-# 运行容器
-docker run -d -p 80:80 \
-  -v bilinote-data:/app/backend/data \
-  -v bilinote-config:/app/backend/config \
-  -v bilinote-static:/app/backend/static \
-  -v bilinote-models:/app/backend/models \
-  --name bilinote \
-  ghcr.io/jefferyhcool/bilinote:latest
-```
-
-上面四个卷分别持久化：`data`（SQLite 数据库 + 生成的笔记）、`config`（LLM 供应商配置 / Cookie / 转写设置）、`static`（笔记引用的视频截图）、`models`（Whisper 模型缓存，可选，避免每次重新下载）。这样 `docker pull` 升级新镜像、删旧容器重建后，配置和历史都不会丢。
-
-> ⚠️ **不要**用 `-v 卷名:/app/backend` 挂整个后端目录——命名卷会用首次启动时的镜像内容固化，之后 `docker pull` 升级也会被旧代码盖住，导致「升级不生效」。只挂上面这些数据子目录即可。
-
-访问：`http://localhost`
-
-也可以使用 docker-compose 本地构建：
-
-```bash
-# 标准部署
-docker-compose up -d
-
-# GPU 加速部署（需要 NVIDIA GPU + NVIDIA Container Toolkit，详见上方「CUDA / GPU 加速」）
-docker-compose -f docker-compose.gpu.yml up --build -d
-```
-
-## 🧠 TODO
-
-- [x] 支持抖音及快手等视频平台
-- [x] 支持前端设置切换 AI 模型切换、语音转文字模型
-- [x] AI 摘要风格自定义（学术风、口语风、重点提取等）
-- [x] 加入更多模型支持
-- [x] 加入更多音频转文本模型支持
-- [x] 基于 RAG 的笔记内容 AI 问答
-- [ ] 笔记导出为 PDF / Word / Notion
-
-### Contact and Join-联系和加入社区
-
-扫描下方公众号二维码，关注后回复 **「交流群」** 即可获取最新的微信交流群二维码（群码会自动更新，避免过期失效）：
-
-<table align="center">
-  <tr>
-    <td align="center"><img src="./doc/wechat-gzh.png" alt="BiliNote 公众号" width="200" /><br/>BiliNote 公众号</td>
-  </tr>
-</table>
-
-
-
-## 🔎代码参考
-- 本项目中的 `抖音下载功能` 部分代码参考引用自：[Evil0ctal/Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
-
-## 📜 License
-
-MIT License
-
----
-
-💬 你的支持与反馈是我持续优化的动力！欢迎 PR、提 issue、Star ⭐️
-## Buy Me a Coffee / 捐赠
-如果你觉得项目对你有帮助，考虑支持我一下吧
-<div style='display:inline;'>
-    <img width='30%' src='https://common-1304618721.cos.ap-chengdu.myqcloud.com/8986c9eb29c356a0cfa3d470c23d3b6.jpg'/>
-    <img width='30%' src='https://common-1304618721.cos.ap-chengdu.myqcloud.com/2a049ea298b206bcd0d8b8da3219d6b.jpg'/>
-</div>
-
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=JefferyHcool/BiliNote&type=Date)](https://www.star-history.com/#JefferyHcool/BiliNote&Date)
+原版介绍与使用文档：[BiliNote 原项目](https://github.com/JefferyHcool/BiliNote#readme)。感谢 Jeffery Huang 及上游贡献者，仓库既有代码的 MIT 许可证与版权声明保留。
